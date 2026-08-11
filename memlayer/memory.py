@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SEARCH_LIMIT = 5
 _DEFAULT_GET_ALL_LIMIT = 100
 _NEIGHBOR_SEARCH_TOP_K = 5
+_DELETE_ALL_FETCH_LIMIT = 100_000
 _DEFAULT_MEMORY_CATEGORY = "semantic"
 _IDENTITY_KEYS = ("user_id", "agent_id", "run_id")
 
@@ -319,15 +320,20 @@ class Memory:
         return {"id": new_id, "memory": text, "event": "ADD"}
 
     def _update_memory(
-        self, memory_id: str, text: str, vector: list[float], category: str
+        self, memory_id: str, text: str, vector: list[float], category: str | None
     ) -> dict[str, Any]:
         existing = self.vector_store.get(memory_id)
         old_text = existing.get("data") if existing else None
+        resolved_category = category or (
+            existing.get("memory_category", _DEFAULT_MEMORY_CATEGORY)
+            if existing
+            else _DEFAULT_MEMORY_CATEGORY
+        )
         payload = {k: v for k, v in (existing or {}).items() if k != "id"}
         payload.update(
             data=text,
             hash=md5_hash(text),
-            memory_category=category,
+            memory_category=resolved_category,
             updated_at=utc_now_iso(),
         )
         self.vector_store.update(memory_id, vector, payload)
@@ -340,6 +346,41 @@ class Memory:
         self.vector_store.delete(memory_id)
         self.history_store.add_history(memory_id, old_text, None, "DELETE")
         return {"id": memory_id, "memory": old_text, "event": "DELETE"}
+
+    # -- mutations: update/delete/delete_all/reset -------------------------
+
+    def update(self, memory_id: str, data: str) -> dict[str, Any]:
+        self._require_existing(memory_id)
+        vector = self.embedder.embed(data)
+        self._update_memory(memory_id, data, vector, category=None)
+        return {"message": "Memory updated successfully!"}
+
+    def delete(self, memory_id: str) -> dict[str, Any]:
+        self._require_existing(memory_id)
+        self._delete_memory(memory_id)
+        return {"message": "Memory deleted successfully!"}
+
+    def delete_all(
+        self,
+        *,
+        user_id: str | None = None,
+        agent_id: str | None = None,
+        run_id: str | None = None,
+    ) -> dict[str, Any]:
+        scope_key, _identity = self._scope_or_raise(user_id, agent_id, run_id)
+        for payload in self.vector_store.get_all(scope_key, top_k=_DELETE_ALL_FETCH_LIMIT):
+            self.history_store.add_history(payload["id"], payload.get("data"), None, "DELETE")
+        self.vector_store.delete_all(scope_key)
+        return {"message": "Memories deleted successfully!"}
+
+    def reset(self) -> dict[str, Any]:
+        self.vector_store.reset()
+        self.history_store.reset()
+        return {"message": "All memories reset."}
+
+    def _require_existing(self, memory_id: str) -> None:
+        if self.vector_store.get(memory_id) is None:
+            raise ValueError(f"Memory {memory_id!r} not found.")
 
     def _build_payload(
         self,
