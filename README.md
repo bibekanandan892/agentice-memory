@@ -31,6 +31,7 @@ memento/      the CLI assistant — see docs/design/03-lld-memento.md
   commands.py     /memories /forget /history /user /help /exit
   cli.py          the REPL loop
 
+server/       optional FastAPI wrapper over memlayer.Memory (stretch, see below)
 scripts/      demo_conversation.py, eval_recall.py (both support --fake for offline runs)
 tests/        unit + integration (all mocked) + live (needs a real GEMINI_API_KEY)
 docs/design/  the frozen HLD/LLD spec — the "paper API" the code implements
@@ -154,6 +155,42 @@ Memory deleted successfully!
 you> /exit
 Goodbye!
 ```
+
+## Optional: REST API server
+
+A minimal FastAPI wrapper (`server/app.py`, stretch Phase 4) exposes the same `memlayer.Memory` instance over HTTP, so a non-Python client — or a future web UI — can use it without embedding the library directly.
+
+```powershell
+uv sync --extra dev --extra server --extra local
+uv run uvicorn server.app:app --reload
+```
+
+Then, from another terminal:
+
+```bash
+# Add a memory (infer=false stores it verbatim, no LLM call)
+curl -X POST http://127.0.0.1:8000/memories \
+  -H "Content-Type: application/json" \
+  -d '{"messages": "I love filter coffee", "user_id": "bibek", "infer": false}'
+
+# List everything stored for a user
+curl "http://127.0.0.1:8000/memories?user_id=bibek"
+
+# Search
+curl -X POST http://127.0.0.1:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "what does the user like to drink?", "user_id": "bibek", "limit": 5}'
+
+# History for one memory (use an id from the /memories list above)
+curl "http://127.0.0.1:8000/memories/<memory_id>/history"
+
+# Delete
+curl -X DELETE "http://127.0.0.1:8000/memories/<memory_id>"
+```
+
+Interactive OpenAPI docs are served at `http://127.0.0.1:8000/docs` once the server is running.
+
+> **No authentication.** Every endpoint is open — anyone who can reach the port can read, add, or delete any user's memories. `uvicorn` without `--host` binds to `127.0.0.1` only, so this is fine for local development, but do not deploy this server on a shared network or the public internet without adding an auth layer first.
 
 ## Architecture at a glance
 
