@@ -190,6 +190,8 @@ curl -X DELETE "http://127.0.0.1:8000/memories/<memory_id>"
 
 Interactive OpenAPI docs are served at `http://127.0.0.1:8000/docs` once the server is running.
 
+> **No authentication.** Every endpoint is open — anyone who can reach the port can read, add, or delete any user's memories. `uvicorn` without `--host` binds to `127.0.0.1` only, so this is fine for local development, but do not deploy this server on a shared network or the public internet without adding an auth layer first.
+
 ## Architecture at a glance
 
 See [`docs/design/01-hld.md`](docs/design/01-hld.md) for the full diagram set (system context, component diagram, read/write path sequence diagrams, two-store data architecture, threading model, ER diagrams). Short version:
