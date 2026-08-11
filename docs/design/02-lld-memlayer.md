@@ -292,6 +292,8 @@ classDiagram
 }
 ```
 
+**Implementation note (Phase 1 Task 1.7):** `LocalVectorStore` shards by a single key, so `_scope_or_raise` computes one `scope_key` from whichever of `user_id`/`agent_id`/`run_id` is provided — priority `user_id` > `agent_id` > `run_id` — used as the store's partition key. Every identity field that *was* provided is still stored in the payload and promoted back out on read, so the public API's three-dimensional scoping is preserved even though storage shards on one axis, matching the class notes' single-axis "shard by user_id" design.
+
 `_scope_or_raise` also **strips** `user_id`/`agent_id`/`run_id` out of any caller-supplied `metadata` dict before merging — identity is immutable after creation and can never be smuggled in through metadata (must-not-skip mechanism #5, HLD §6 note).
 
 `_format_result` promotes `user_id`/`agent_id`/`run_id` to top-level result keys and nests everything else (including `memory_category`) under a `"metadata"` key on read — except `memory_category`, which is promoted alongside the identity keys since the class-notes categorization is a first-class concept in this project, not an incidental metadata field. *(Design decision, documented here as a deliberate deviation from strict Mem0 parity — flagged again in the README parity table.)*
