@@ -217,7 +217,7 @@ classDiagram
 
 | Exception | Raised when | Caller-visible? |
 |---|---|---|
-| `ConfigError` | `from_config()` sees an unknown provider name or malformed shape | Yes — fails fast at startup, per coding-style rules |
+| `ConfigError` | `from_config()` sees an unknown provider name or malformed shape; **also** raised by a concrete provider's constructor (e.g. `GeminiLLM`) when required credentials like `GEMINI_API_KEY` are missing — both are config-time, fail-fast problems, not call-time failures | Yes — fails fast at startup, per coding-style rules |
 | `LLMResponseError` | `GeminiLLM` exhausts retries | Bubbles out of `Memory.add()`/`search()` — a real infra failure, not swallowed |
 | `ScopeError` | `search`, `get_all`, or `delete_all` called with no `user_id`/`agent_id`/`run_id` | Yes — this is the safety rail from HLD F5, not something to silently work around |
 
