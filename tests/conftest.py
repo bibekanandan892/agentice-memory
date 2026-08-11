@@ -75,10 +75,36 @@ def fake_embedder() -> FakeEmbedder:
 
 @pytest.fixture
 def mem_config(tmp_path: Path) -> dict:
-    """A memlayer config dict pointing at temp DB files, for fully offline tests."""
+    """A realistic memlayer config dict (real provider names) pointing at temp DB
+    files, for from_config()/MemoryConfig parsing tests. Pipeline tests that need
+    a working Memory instance use the `memory_with_fakes` fixture instead — fakes
+    are injected directly via Memory's constructor, never through the provider
+    factory, so test doubles never leak into production config parsing.
+    """
     return {
-        "llm": {"provider": "fake", "config": {}},
-        "embedder": {"provider": "fake", "config": {"dims": 8}},
+        "llm": {"provider": "gemini", "config": {"model": "gemini-2.0-flash"}},
+        "embedder": {"provider": "sentence_transformer", "config": {}},
         "vector_store": {"provider": "local", "config": {"db_path": str(tmp_path / "vectors.db")}},
         "history_db_path": str(tmp_path / "history.db"),
     }
+
+
+@pytest.fixture
+def memory_with_fakes(fake_llm: FakeLLM, fake_embedder: FakeEmbedder, tmp_path: Path):
+    """A fully wired Memory instance with FakeLLM/FakeEmbedder injected and real
+    (but temp-path) LocalVectorStore + SQLiteHistoryStore — for add()/search()
+    pipeline tests that need real storage/search behavior without any network
+    or model download.
+    """
+    from memlayer.memory import Memory
+    from memlayer.storage.history import SQLiteHistoryStore
+    from memlayer.vector_stores.local import LocalVectorStore
+
+    vector_store = LocalVectorStore(db_path=tmp_path / "vectors.db")
+    history_store = SQLiteHistoryStore(db_path=tmp_path / "history.db")
+    return Memory(
+        llm=fake_llm,
+        embedder=fake_embedder,
+        vector_store=vector_store,
+        history_store=history_store,
+    )
