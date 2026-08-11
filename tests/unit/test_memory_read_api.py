@@ -46,6 +46,23 @@ class TestConstructorAndFromConfig:
         assert isinstance(memory.embedder, SentenceTransformerEmbedder)
         assert isinstance(memory.vector_store, LocalVectorStore)
 
+    def test_from_config_wires_gemini_embedder_when_selected(self, tmp_path):
+        config = {
+            "llm": {"provider": "gemini", "config": {"api_key": "fake-key-for-test"}},
+            "embedder": {"provider": "gemini", "config": {"api_key": "fake-key-for-test"}},
+            "vector_store": {"provider": "local", "config": {"db_path": str(tmp_path / "v.db")}},
+            "history_db_path": str(tmp_path / "h.db"),
+        }
+        with (
+            patch("memlayer.llms.gemini.genai.Client"),
+            patch("memlayer.embeddings.gemini.genai.Client"),
+        ):
+            memory = Memory.from_config(config)
+
+        from memlayer.embeddings.gemini import GeminiEmbedder
+
+        assert isinstance(memory.embedder, GeminiEmbedder)
+
     def test_from_config_defaults_vector_store_path_next_to_history_db(self, tmp_path):
         config = {
             "llm": {"provider": "gemini", "config": {"api_key": "fake-key-for-test"}},
