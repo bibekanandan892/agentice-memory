@@ -157,6 +157,15 @@ _partitions: dict[user_id: str, tuple[ids: list[str], matrix: np.ndarray[N, dims
 - `_load_partitions()`: called once at construction — reads all rows from `vectors.db` grouped by `user_id` and rebuilds the in-RAM structure. This is what makes `LocalVectorStore(db_path)` from an existing file resume exactly where it left off (the reload-correctness property tested in Task 1.3).
 - Score contract (per `VectorStoreBase` docstring, matching the Mem0 research finding): **higher score = more similar**, always in `[-1, 1]` for cosine.
 
+### Implementation notes (Phase 1 Task 1.3 — reconciled deviations)
+
+Discovered while implementing `LocalVectorStore`, not contradicting the design, just filling in unspecified edge cases:
+- `insert()` raises `KeyError` with an explicit message if `payload` lacks `"user_id"` (fail fast, per coding-style rules).
+- `update(id, ...)` / `delete(id)` raise `KeyError` for an unknown `id` rather than silently no-op-ing — `Memory._apply_event` must catch this per-event (ties into must-not-skip mechanism #4).
+- `get()` and `get_all()` both merge `"id"` into the returned payload dict (LLD originally specified this only for `get()`).
+- Constructor auto-creates missing parent directories for `db_path` (`mkdir(parents=True, exist_ok=True)`), matching `SQLiteHistoryStore`'s convention.
+- Zero-vector inputs are guarded during normalization (division-by-zero → similarity `0.0` instead of `NaN`/crash).
+
 ## 5. History store
 
 ```mermaid
