@@ -15,8 +15,13 @@ jobs:
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.11
+      # server + mcp are needed because tests/integration/test_server_app.py and
+      # test_mcp_server_tools.py import fastapi/mcp unconditionally (no importorskip
+      # guard) — local/media are intentionally left out: local downloads a ~90MB
+      # model and isn't exercised by the default test suite (fakes are used
+      # everywhere), and media's one test already skips gracefully without it.
       - name: Sync dependencies
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra server --extra mcp
       - name: Lint
         run: uv run ruff check .
       - name: Test with coverage
