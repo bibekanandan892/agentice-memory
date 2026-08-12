@@ -32,6 +32,7 @@ memento/      the CLI assistant — see docs/design/03-lld-memento.md
   cli.py          the REPL loop
 
 server/       optional FastAPI wrapper over memlayer.Memory (stretch, see below)
+mcp_server/   optional MCP server exposing memlayer as tools (stretch, see below)
 scripts/      demo_conversation.py, eval_recall.py (both support --fake for offline runs)
 tests/        unit + integration (all mocked) + live (needs a real GEMINI_API_KEY)
 docs/design/  the frozen HLD/LLD spec — the "paper API" the code implements
@@ -191,6 +192,35 @@ curl -X DELETE "http://127.0.0.1:8000/memories/<memory_id>"
 Interactive OpenAPI docs are served at `http://127.0.0.1:8000/docs` once the server is running.
 
 > **No authentication.** Every endpoint is open — anyone who can reach the port can read, add, or delete any user's memories. `uvicorn` without `--host` binds to `127.0.0.1` only, so this is fine for local development, but do not deploy this server on a shared network or the public internet without adding an auth layer first.
+
+## Optional: MCP server
+
+`mcp_server/server.py` (stretch Phase 5) exposes memlayer as four MCP tools — `save_memory`, `search_memory`, `list_memories`, `forget_memory` — so any MCP-aware client (Claude Desktop, Claude Code, etc.) can use it directly, over stdio. It reuses the same `Memory` singleton as the REST server (`server/dependencies.py`), so all three surfaces (CLI, REST, MCP) operate on identical data.
+
+```powershell
+uv sync --extra dev --extra mcp --extra local
+```
+
+Add this to your Claude Desktop config (`%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+
+```json
+{
+  "mcpServers": {
+    "memlayer": {
+      "command": "uv",
+      "args": [
+        "--directory", "C:\\path\\to\\agentice-memory",
+        "run", "python", "-m", "mcp_server.server"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop, and the four tools appear in the tool picker. Same authentication caveat as the REST server applies: the server itself has no auth layer — it relies entirely on the MCP client only launching it locally over stdio, never exposing it as a network service.
 
 ## Architecture at a glance
 
