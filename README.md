@@ -71,14 +71,14 @@ Targets Mem0's classic `v0.1.118` semantics (current Mem0 `main`/v2 replaced thi
 
 ```powershell
 # Requires Python 3.11+ and uv (https://docs.astral.sh/uv/)
-uv sync --extra dev              # core deps + test tooling (no model download)
-uv sync --extra dev --extra local  # add this when you want the real local embedder
+uv sync --extra dev --extra server --extra mcp   # everything needed to run the full test suite
+uv sync --extra dev --extra local                 # add this separately for the real local embedder
 
 Copy-Item .env.example .env
 # then edit .env and set GEMINI_API_KEY (free key: https://aistudio.google.com/)
 ```
 
-Without `uv`, a plain `pip install -e ".[dev,local]"` inside a venv works too — the package is a standard `pyproject.toml` project.
+Without `uv`, a plain `pip install -e ".[dev,server,mcp,local]"` inside a venv works too — the package is a standard `pyproject.toml` project.
 
 The `[local]` extra installs `sentence-transformers` (and `torch`), used for the default embedder. It's optional: the core library and all offline tests never require it (the embedder is lazy-loaded on first real use, so `import memlayer` and the whole test suite work without it). The first time you actually call the real embedder it downloads the `all-MiniLM-L6-v2` model (~90MB) and caches it under your Hugging Face cache dir.
 
@@ -90,7 +90,7 @@ uv run ruff check .
 uv run pytest -m live          # 1-2 real Gemini calls, needs GEMINI_API_KEY in .env
 ```
 
-The offline suite (250+ tests) mocks every LLM and, for the default embedder path, mocks `sentence-transformers` too — nothing in CI ever hits the network or downloads a model.
+The offline suite (260+ tests) mocks every LLM and, for the default embedder path, mocks `sentence-transformers` too — nothing in CI ever hits the network or downloads a model. `test_server_app.py` and `test_mcp_server_tools.py` need `--extra server`/`--extra mcp` installed (they import `fastapi`/`mcp` at collection time, no skip guard) — that's exactly what CI installs.
 
 ## Try it
 
