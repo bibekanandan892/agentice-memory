@@ -1,6 +1,15 @@
 # Memento + MemLayer
 
+[![CI](https://github.com/bibekanandan892/agentice-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/bibekanandan892/agentice-memory/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)](#running-the-tests)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+
 A personal AI assistant (`memento`) built on a from-scratch, Mem0-style memory library (`memlayer`) — a portfolio implementation of the *"Design Memory for a Personal AI Assistant"* AIML course class, reproducing the classic Mem0 `v0.1.118` two-phase extract/reconcile pipeline entirely from scratch.
+
+![Memento demo: a chat turn that gets remembered, /memories listing saved facts, /user switching showing isolation, and /forget deleting a memory](docs/media/demo.gif)
+
+*(Simulated session — the actual Assistant/CommandRegistry/Memory pipeline is real and tested, but no live GEMINI_API_KEY was available when generating this gif. Regenerate with real replies via `uv run --extra media python scripts/record_demo_gif.py --live`.)*
 
 **Design docs (read these first):**
 [HLD — system context, read/write path, data architecture](docs/design/01-hld.md) ·
@@ -33,9 +42,10 @@ memento/      the CLI assistant — see docs/design/03-lld-memento.md
 
 server/       optional FastAPI wrapper over memlayer.Memory (stretch, see below)
 mcp_server/   optional MCP server exposing memlayer as tools (stretch, see below)
-scripts/      demo_conversation.py, eval_recall.py (both support --fake for offline runs)
+scripts/      demo_conversation.py, eval_recall.py, record_demo_gif.py (all support --fake)
 tests/        unit + integration (all mocked) + live (needs a real GEMINI_API_KEY)
 docs/design/  the frozen HLD/LLD spec — the "paper API" the code implements
+docs/media/   generated assets (demo.gif) — see scripts/record_demo_gif.py
 ```
 
 ## Class-notes concept map
@@ -94,6 +104,11 @@ uv run python scripts/eval_recall.py             # real embeddings, needs --extr
 
 # The interactive assistant (needs GEMINI_API_KEY in .env)
 uv run memento
+
+# Regenerate the README's demo gif (docs/media/demo.gif)
+uv sync --extra dev --extra media
+uv run python scripts/record_demo_gif.py            # scripted, no API key needed (default)
+uv run python scripts/record_demo_gif.py --live      # real Gemini replies, needs --extra local + a key
 ```
 
 Sample `--fake` demo output (`scripts/demo_conversation.py --fake`):
