@@ -14,6 +14,10 @@ from __future__ import annotations
 
 from typing import Any
 
+# mcp SDK v2.0 renamed the older FastMCP class to MCPServer and moved it to
+# mcp.server.mcpserver — verified against the installed 2.0.0 package since
+# most tutorials/examples online still reference `from mcp.server.fastmcp
+# import FastMCP`, which no longer exists in this version.
 from mcp.server.mcpserver import MCPServer
 
 from memlayer.errors import MemLayerError
