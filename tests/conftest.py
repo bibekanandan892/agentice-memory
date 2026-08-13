@@ -82,7 +82,7 @@ def mem_config(tmp_path: Path) -> dict:
     factory, so test doubles never leak into production config parsing.
     """
     return {
-        "llm": {"provider": "gemini", "config": {"model": "gemini-2.0-flash"}},
+        "llm": {"provider": "gemini", "config": {"model": "gemini-flash-latest"}},
         "embedder": {"provider": "sentence_transformer", "config": {}},
         "vector_store": {"provider": "local", "config": {"db_path": str(tmp_path / "vectors.db")}},
         "history_db_path": str(tmp_path / "history.db"),

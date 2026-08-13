@@ -30,10 +30,10 @@ class TestDefaults:
 class TestPartialOverride:
     def test_overriding_llm_provider_only(self, tmp_path: Path):
         config = MemoryConfig.from_dict(
-            {"llm": {"provider": "gemini", "config": {"model": "gemini-2.0-flash"}}}
+            {"llm": {"provider": "gemini", "config": {"model": "gemini-flash-latest"}}}
         )
         assert config.llm.provider == "gemini"
-        assert config.llm.config["model"] == "gemini-2.0-flash"
+        assert config.llm.config["model"] == "gemini-flash-latest"
         # Untouched sections still fall back to defaults.
         assert config.embedder.provider == "sentence_transformer"
 

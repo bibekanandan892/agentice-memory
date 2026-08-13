@@ -326,7 +326,7 @@ flowchart TB
 | Area | Choice | Rationale |
 |---|---|---|
 | Language / packaging | Python 3.11+, `uv` | Fast reproducible installs; `pip install -e .` still works for graders without uv |
-| Assistant + extractor + reconciler LLM | Gemini API free tier (`gemini-2.0-flash` default) | Free tier sufficient for a portfolio demo; JSON mode (`response_mime_type="application/json"`) gives structured extraction/reconciliation output |
+| Assistant + extractor + reconciler LLM | Gemini API free tier (`gemini-flash-latest` default — the alias tracks Google's current stable flash model, since pinned names get retired server-side; pin via config for reproducibility) | Free tier sufficient for a portfolio demo; JSON mode (`response_mime_type="application/json"`) gives structured extraction/reconciliation output |
 | Embeddings (default) | Local `sentence-transformers` `all-MiniLM-L6-v2`, 384-dim | Free, offline, no rate limits on the highest-volume call in the system (once per fact, every turn) |
 | Embeddings (optional) | `GeminiEmbedder` behind the same `EmbeddingBase` interface | Proves the abstraction holds with a second real provider |
 | Vector store | From-scratch NumPy store, **sharded by `user_id`** | Directly implements the class's scale insight (§6): a query is always scoped to one user, so partition first and only ever search that user's small set — no global ANN index needed |
