@@ -12,12 +12,16 @@ from __future__ import annotations
 import os
 
 import pytest
+from dotenv import load_dotenv
 
 pytestmark = pytest.mark.live
 
 
 @pytest.fixture(autouse=True)
 def _skip_without_api_key():
+    # The README promises `pytest -m live` works with the key in .env alone,
+    # so load it here — pytest doesn't read .env by itself.
+    load_dotenv()
     if not os.environ.get("GEMINI_API_KEY"):
         pytest.skip("GEMINI_API_KEY is not set; skipping live smoke test.")
 
