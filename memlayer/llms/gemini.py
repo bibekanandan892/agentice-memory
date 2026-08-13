@@ -17,7 +17,11 @@ from google.genai import types as genai_types
 from memlayer.errors import ConfigError, LLMResponseError
 from memlayer.llms.base import LLMBase
 
-DEFAULT_MODEL = "gemini-2.0-flash"
+# "-latest" alias: tracks Google's current stable flash model. A pinned name
+# (gemini-2.0-flash) was retired server-side in mid-2026 and started 404ing,
+# so the default now self-heals; pin an exact model via config when you need
+# reproducibility over availability.
+DEFAULT_MODEL = "gemini-flash-latest"
 DEFAULT_TEMPERATURE = 0.0
 DEFAULT_MAX_RETRIES = 3
 

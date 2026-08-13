@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 
 DEFAULT_DATA_DIR = "./data"
 DEFAULT_USER_ID = "default_user"
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+# Tracks current stable flash; see the note in memlayer/llms/gemini.py.
+DEFAULT_GEMINI_MODEL = "gemini-flash-latest"
 
 GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
 

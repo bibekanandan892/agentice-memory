@@ -16,14 +16,14 @@ class TestAppConfigLoadFromEnv:
         monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
         monkeypatch.setenv("MEMENTO_DATA_DIR", str(tmp_path))
         monkeypatch.setenv("MEMENTO_DEFAULT_USER_ID", "bibek")
-        monkeypatch.setenv("GEMINI_MODEL", "gemini-2.0-flash")
+        monkeypatch.setenv("GEMINI_MODEL", "gemini-flash-latest")
 
         config = AppConfig.load_from_env(dotenv_path=tmp_path / "does-not-exist.env")
 
         assert config.gemini_api_key == "test-key-123"
         assert config.data_dir == tmp_path
         assert config.default_user_id == "bibek"
-        assert config.gemini_model == "gemini-2.0-flash"
+        assert config.gemini_model == "gemini-flash-latest"
 
     def test_missing_api_key_raises_clear_error(self, monkeypatch, tmp_path):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
@@ -40,7 +40,7 @@ class TestAppConfigLoadFromEnv:
 
         assert config.data_dir == Path("./data")
         assert config.default_user_id == "default_user"
-        assert config.gemini_model == "gemini-2.0-flash"
+        assert config.gemini_model == "gemini-flash-latest"
 
     def test_derives_db_paths_under_data_dir(self, monkeypatch, tmp_path):
         monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
@@ -62,7 +62,7 @@ class TestAppConfigToMemlayerConfig:
             vectors_db_path=tmp_path / "vectors.db",
             history_db_path=tmp_path / "history.db",
             default_user_id="default_user",
-            gemini_model="gemini-2.0-flash",
+            gemini_model="gemini-flash-latest",
         )
         memlayer_config = config.to_memlayer_config()
 
