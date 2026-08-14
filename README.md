@@ -9,7 +9,7 @@ A personal AI assistant (`memento`) built on a from-scratch, Mem0-style memory l
 
 ![Memento demo: a chat turn that gets remembered, /memories listing saved facts, /user switching showing isolation, and /forget deleting a memory](docs/media/demo.gif)
 
-*(Simulated session — the actual Assistant/CommandRegistry/Memory pipeline is real and tested, but no live GEMINI_API_KEY was available when generating this gif. Regenerate with real replies via `uv run --extra media python scripts/record_demo_gif.py --live`.)*
+*(Real session: actual Gemini replies and real extraction/reconciliation through the full pipeline, rendered to gif by `scripts/record_demo_gif.py --live`. The typed inputs are scripted so the recording is repeatable; everything after each keystroke — the reply, the extracted facts, the `Memory updated ✓` — is live model output.)*
 
 **Design docs (read these first):**
 [HLD — system context, read/write path, data architecture](docs/design/01-hld.md) ·
