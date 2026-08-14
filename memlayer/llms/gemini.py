@@ -122,27 +122,29 @@ class GeminiLLM(LLMBase):
         return system_instruction, contents
 
     def _call_with_backoff(self, call):
-        """Call `call()`, retrying on Gemini rate-limit errors.
+        """Call `call()`, retrying on transient Gemini errors: 429/RESOURCE_EXHAUSTED
+        rate limits AND any 5xx `ServerError` (observed live: 503 UNAVAILABLE
+        "model experiencing high demand" — Google's own message says to retry).
 
         `self.max_retries` is the total number of attempts allowed (the
         initial try counts as attempt 1) — with the default of 3, the client
         is called at most 3 times total, not 3 retries on top of a first try.
-        Any exception other than a rate-limit-shaped `ClientError` propagates
-        immediately, uncaught, on the first attempt.
+        Non-transient errors (4xx that aren't rate limits, unexpected exception
+        types) propagate immediately, uncaught, on the first attempt.
         """
-        last_error: genai_errors.ClientError | None = None
+        last_error: genai_errors.APIError | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 return call()
-            except genai_errors.ClientError as exc:
-                if not _is_rate_limit_error(exc):
+            except (genai_errors.ClientError, genai_errors.ServerError) as exc:
+                if isinstance(exc, genai_errors.ClientError) and not _is_rate_limit_error(exc):
                     raise
                 last_error = exc
                 if attempt < self.max_retries:
                     time.sleep(_retry_delay_seconds(exc, attempt))
 
         raise LLMResponseError(
-            f"Gemini rate limit exceeded after {self.max_retries} attempt(s): {last_error}"
+            f"Gemini still failing after {self.max_retries} attempt(s): {last_error}"
         ) from last_error
 
 
@@ -150,14 +152,14 @@ def _is_rate_limit_error(exc: genai_errors.ClientError) -> bool:
     return exc.code == RATE_LIMIT_HTTP_CODE or exc.status == RATE_LIMIT_STATUS
 
 
-def _retry_delay_seconds(exc: genai_errors.ClientError, attempt: int) -> float:
+def _retry_delay_seconds(exc: genai_errors.APIError, attempt: int) -> float:
     server_delay = _extract_server_retry_delay(exc)
     if server_delay is not None:
         return server_delay
     return BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)) + random.uniform(0, BACKOFF_JITTER_SECONDS)
 
 
-def _extract_server_retry_delay(exc: genai_errors.ClientError) -> float | None:
+def _extract_server_retry_delay(exc: genai_errors.APIError) -> float | None:
     """Best-effort extraction of a `google.rpc.RetryInfo.retryDelay` (e.g.
     "19s") from the raw error body the SDK stores on `exc.details`.
 

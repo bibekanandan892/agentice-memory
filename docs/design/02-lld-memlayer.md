@@ -70,7 +70,7 @@ classDiagram
 
 - `generate_response(messages, response_format="json")` — `messages` is `[{"role": "system"|"user"|"assistant", "content": str}, ...]`; returns the **raw text response** (JSON parsing happens in `memory.py`, not here — keeps the LLM boundary dumb and testable).
 - `GeminiLLM._map_messages`: splits the leading `system` message into Gemini's `system_instruction`, the rest into `contents`.
-- `GeminiLLM._call_with_backoff`: catches `RESOURCE_EXHAUSTED` / HTTP 429, retries up to `max_retries` (default 3) with exponential backoff + jitter, honoring the server's `retry_delay` field when present; raises `LLMResponseError` once exhausted.
+- `GeminiLLM._call_with_backoff`: catches `RESOURCE_EXHAUSTED` / HTTP 429 **and any 5xx `ServerError`** (added after a live 503 UNAVAILABLE "high demand" was observed in production — Google's own error text says to retry), retries up to `max_retries` (default 3) with exponential backoff + jitter, honoring the server's `retry_delay` field when present; raises `LLMResponseError` once exhausted. Non-rate-limit 4xx and unexpected exception types propagate immediately without retry.
 - `response_format="json"` → sets `response_mime_type="application/json"` on the Gemini request (structured-output mode; avoids most fence-wrapping, though `remove_code_blocks` still runs defensively).
 
 ## 3. Embedding provider hierarchy

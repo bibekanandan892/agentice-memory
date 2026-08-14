@@ -46,6 +46,13 @@ def _bad_request_error() -> genai_errors.ClientError:
     )
 
 
+def _server_unavailable_error() -> genai_errors.ServerError:
+    """A transient 5xx, shaped like Gemini's real 503 high-demand response —
+    observed live: 'This model is currently experiencing high demand.'"""
+    body = {"code": 503, "message": "High demand, try again later", "status": "UNAVAILABLE"}
+    return genai_errors.ServerError(503, {"error": body})
+
+
 def _response(text: str = "ok") -> SimpleNamespace:
     return SimpleNamespace(text=text)
 
@@ -251,6 +258,27 @@ class TestRetryBehavior:
         assert result == "ok"
         assert len(no_real_sleep) == 1
         assert no_real_sleep[0] >= gemini_module.BACKOFF_BASE_SECONDS
+
+    def test_succeeds_after_transient_server_error(self, mock_client: MagicMock) -> None:
+        mock_client.models.generate_content.side_effect = [
+            _server_unavailable_error(),
+            _response("recovered"),
+        ]
+        llm = gemini_module.GeminiLLM(max_retries=3)
+
+        result = llm.generate_response([{"role": "user", "content": "Hi"}])
+
+        assert result == "recovered"
+        assert mock_client.models.generate_content.call_count == 2
+
+    def test_persistent_server_errors_exhaust_retries(self, mock_client: MagicMock) -> None:
+        mock_client.models.generate_content.side_effect = _server_unavailable_error()
+        llm = gemini_module.GeminiLLM(max_retries=3)
+
+        with pytest.raises(LLMResponseError):
+            llm.generate_response([{"role": "user", "content": "Hi"}])
+
+        assert mock_client.models.generate_content.call_count == 3
 
     def test_non_rate_limit_error_propagates_without_retry(self, mock_client: MagicMock) -> None:
         mock_client.models.generate_content.side_effect = _bad_request_error()

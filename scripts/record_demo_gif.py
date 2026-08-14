@@ -62,16 +62,23 @@ class Line:
         self.segments = segments
 
 
+def _oneline(text: str) -> str:
+    """Collapse newlines/runs of whitespace — real LLM replies are multiline,
+    and PIL's textlength() refuses multiline strings (wrap_line handles the
+    re-wrapping to the canvas width itself)."""
+    return " ".join(text.split())
+
+
 def plain(text: str, color=COLOR_TEXT) -> Line:
-    return Line([("", COLOR_TEXT), (text, color)])
+    return Line([("", COLOR_TEXT), (_oneline(text), color)])
 
 
 def user_line(text: str) -> Line:
-    return Line([("you> ", COLOR_USER_PROMPT), (text, COLOR_TEXT)])
+    return Line([("you> ", COLOR_USER_PROMPT), (_oneline(text), COLOR_TEXT)])
 
 
 def assistant_line(text: str) -> Line:
-    return Line([("memento> ", COLOR_ASSISTANT_PROMPT), (text, COLOR_TEXT)])
+    return Line([("memento> ", COLOR_ASSISTANT_PROMPT), (_oneline(text), COLOR_TEXT)])
 
 
 def write_confirmation_line() -> Line:
@@ -146,11 +153,16 @@ def build_script(fake: bool):
         memory_llm = FakeLLM()
         embedder = FakeEmbedder()
     else:
-        from memlayer.embeddings.sentence_transformer import SentenceTransformerEmbedder
-        from memlayer.llms.gemini import GeminiLLM
+        import os
 
-        chat_llm = GeminiLLM()
-        memory_llm = GeminiLLM()
+        from memlayer.embeddings.sentence_transformer import SentenceTransformerEmbedder
+        from memlayer.llms.gemini import DEFAULT_MODEL, GeminiLLM
+
+        # Honor GEMINI_MODEL like the rest of the app (memento/config.py does) —
+        # useful when the default alias's model is under heavy demand (503s).
+        model = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL)
+        chat_llm = GeminiLLM(model=model)
+        memory_llm = GeminiLLM(model=model)
         embedder = SentenceTransformerEmbedder()
 
     memory = Memory(
@@ -203,10 +215,18 @@ def build_script(fake: bool):
     push(user_line(turn1_text), USER_INPUT_HOLD_MS)
     reply = assistant.chat(turn1_text, "bibek")
     push(assistant_line(reply))
-    assistant.shutdown(timeout=15.0)  # deterministic for the recording; real usage is async
+    # Deterministic for the recording; real usage is async. Generous timeout:
+    # in --live mode the background add() makes two real LLM calls, and a
+    # free-tier rate-limit retry can add tens of seconds on top.
+    assistant.shutdown(timeout=90.0)
     outcome = assistant.poll_write_result()
     if outcome and outcome[0] == "ok":
         push(write_confirmation_line())
+    else:
+        # A failed/missing write means the rest of the recording (memories
+        # table, /forget) would be empty or wrong — fail loudly instead of
+        # producing a broken gif.
+        raise RuntimeError(f"Background memory write did not succeed: {outcome!r}")
 
     push(user_line("/memories"), USER_INPUT_HOLD_MS)
     rows = [
@@ -215,7 +235,14 @@ def build_script(fake: bool):
     ]
     for line in table_lines(f"Memories for {context.active_user_id}", rows):
         push(line)
-    forget_id = memory.get_all(user_id="bibek")["results"][2]["id"]  # "Likes filter coffee"
+    # Pick the coffee memory to /forget when we can find it; fall back to the
+    # last row — in --live mode the real extractor decides how many facts to
+    # store and in what order, so a fixed index is not safe.
+    results = memory.get_all(user_id="bibek")["results"]
+    forget_target = next(
+        (row for row in results if "coffee" in row["memory"].lower()), results[-1]
+    )
+    forget_id = forget_target["id"]
 
     push(user_line("/user alice"), USER_INPUT_HOLD_MS)
     result = registry.dispatch("/user alice", context)
